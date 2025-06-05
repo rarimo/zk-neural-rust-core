@@ -1,0 +1,6 @@
+language    = "C"
+pragma_once = true
+
+[export]
+include = ["ZKNeuralCore", "ZKNeuralError",  "rs_zkneural_*"]
+exclude = ["*SIZE"]

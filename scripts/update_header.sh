@@ -1,0 +1,1 @@
+cbindgen --config cbindgen.toml --crate zk-neural-rust-core --output zk_neural_rust_core.h
