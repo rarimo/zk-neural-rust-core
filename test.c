@@ -2,8 +2,8 @@
 #include <stdio.h>
 
 
-char MOCK_ZK_PROOF_POINTS[] = "{\"pi_a\":[],\"pi_b\":[],\"pi_c\":[],\"proof_protocol\":\"groth16\"}";
-char MOCK_ZK_PROOF_PUB_SIGNALS[] = "[]";
+const char MOCK_ZK_PROOF_POINTS[] = "{\"pi_a\":[],\"pi_b\":[],\"pi_c\":[],\"proof_protocol\":\"groth16\"}";
+const char MOCK_ZK_PROOF_PUB_SIGNALS[] = "[]";
 
 int32_t generate_witness_callback(
     const uint8_t *circuit_buffer,
