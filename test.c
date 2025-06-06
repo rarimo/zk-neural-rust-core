@@ -71,7 +71,7 @@ void test_proof_generation() {
     ZkNeuralCoreResult* wtns_result = rs_zkneural_generate_witness(
         core,
         (const uint8_t *)"circuit_data", 12,
-        (const uint8_t *)"json_data", 10 
+        (const uint8_t *)"json_data", 9 
     );
 
     if (wtns_result->error) {
