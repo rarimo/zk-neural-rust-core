@@ -97,6 +97,8 @@ void test_proof_generation() {
 
     printf("Proof generated successfully\n");
     printf("Proof: %.*s\n", (int)proof_result->value_size, proof_result->value);
+
+    rs_zkneural_dealloc_result(wtns_result);
 }
 
 int main(void) {
