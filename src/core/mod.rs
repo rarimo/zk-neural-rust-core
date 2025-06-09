@@ -1,6 +1,7 @@
 pub mod callbacks;
 pub mod constants;
 pub mod errors;
+pub mod tensor;
 pub mod zk_proof;
 
 use callbacks::{GenerateProofCallback, GenerateWitnessCallback};
