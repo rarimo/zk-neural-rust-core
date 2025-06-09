@@ -19,6 +19,25 @@ xcodebuild -create-xcframework \
     -library target/aarch64-apple-ios-sim/release/libzk_neural_rust_core.a -headers headers \
     -output xcframeworks/ZkNeuralRustCore.xcframework
 
+mkdir -p xcframeworks/ZkNeuralRustCore.xcframework/ios-arm64/Modules
+mkdir -p xcframeworks/ZkNeuralRustCore.xcframework/ios-arm64-simulator/Modules
+
+{
+echo "framework module ZkNeuralRustCore {"
+echo "\tumbrella header \"zk_neural_rust_core.h\""
+echo "\texport *"
+echo "\tmodule * { export * }"
+echo "}"
+} > xcframeworks/ZkNeuralRustCore.xcframework/ios-arm64/Modules/module.modulemap
+
+{
+echo "framework module ZkNeuralRustCore {"
+echo "\tumbrella header \"zk_neural_rust_core.h\""
+echo "\texport *"
+echo "\tmodule * { export * }"
+echo "}"
+} > xcframeworks/ZkNeuralRustCore.xcframework/ios-arm64-simulator/Modules/module.modulemap
+
 codesign --timestamp -s "$CODE_SIGNER" xcframeworks/ZkNeuralRustCore.xcframework
 
 zip -9 -r "xcframeworks/ZkNeuralRustCore.xcframework.zip" "xcframeworks/ZkNeuralRustCore.xcframework"
