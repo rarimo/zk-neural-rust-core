@@ -1,4 +1,4 @@
-#include "zk_neural_rust_core.h"
+#include "headers/zk_neural_rust_core.h"
 #include <stdio.h>
 
 
