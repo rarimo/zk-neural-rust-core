@@ -24,17 +24,17 @@ mkdir -p xcframeworks/ZkNeuralRustCore.xcframework/ios-arm64-simulator/Modules
 
 {
 echo "framework module ZkNeuralRustCore {"
-echo "\tumbrella header \"zk_neural_rust_core.h\""
-echo "\texport *"
-echo "\tmodule * { export * }"
+echo "    umbrella header \"zk_neural_rust_core.h\""
+echo "    export *"
+echo "    module * { export * }"
 echo "}"
 } > xcframeworks/ZkNeuralRustCore.xcframework/ios-arm64/Modules/module.modulemap
 
 {
 echo "framework module ZkNeuralRustCore {"
-echo "\tumbrella header \"zk_neural_rust_core.h\""
-echo "\texport *"
-echo "\tmodule * { export * }"
+echo "    umbrella header \"zk_neural_rust_core.h\""
+echo "    export *"
+echo "    module * { export * }"
 echo "}"
 } > xcframeworks/ZkNeuralRustCore.xcframework/ios-arm64-simulator/Modules/module.modulemap
 
