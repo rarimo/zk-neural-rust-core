@@ -59,9 +59,9 @@ function copy_framework_files() {
     mkdir -p $FRAMEWORK_PATH/Modules
     {
     echo "framework module ZkNeuralRustCoreLib {"
-    echo "\tumbrella header \"ZkNeuralRustCoreLib.h\""
-    echo "\texport *"
-    echo "\tmodule * { export * }"
+    echo "    umbrella header \"ZkNeuralRustCoreLib.h\""
+    echo "    export *"
+    echo "    module * { export * }"
     echo "}"
     } > $FRAMEWORK_PATH/Modules/module.modulemap
 
