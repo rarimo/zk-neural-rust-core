@@ -1,4 +1,5 @@
 use super::core::ZKNeuralCore;
+use super::core::tensor::TensorInvoker;
 
 use super::core::{
     callbacks::{GenerateProofCallback, GenerateWitnessCallback},
@@ -149,6 +150,29 @@ pub extern "C" fn rs_zkneural_generate_proof(
     let result = core.generate_proof(zkey_slice, wtns_slice);
 
     ZkNeuralCoreResult::from_rust_result(result)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rs_zkneural_tensor_invoker_new(
+    model_buffer: *const u8,
+    model_len: usize,
+) -> *mut TensorInvoker {
+    let model_slice = unsafe { std::slice::from_raw_parts(model_buffer, model_len).to_vec() };
+
+    let invoker =
+        TensorInvoker::new(&model_slice).expect("Failed to create TensorInvoker from model buffer");
+
+    Box::into_raw(Box::new(invoker))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rs_zkneural_tensor_invoker_free(invoker: *mut TensorInvoker) {
+    if invoker.is_null() {
+        return;
+    }
+    unsafe {
+        drop(Box::from_raw(invoker));
+    }
 }
 
 #[unsafe(no_mangle)]

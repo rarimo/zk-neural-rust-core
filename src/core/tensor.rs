@@ -8,15 +8,15 @@ use tflitec::{
 
 use crate::ZKNeuralError;
 
-pub struct TensorInvoker<'a> {
-    pub model: Model<'a>,
+pub struct TensorInvoker {
+    pub model_data: Vec<u8>,
     pub input_shape: Shape,
     pub input_data_type: DataType,
 }
 
-impl<'a> TensorInvoker<'a> {
-    pub fn new(model_data: &'a [u8]) -> Result<Self, ZKNeuralError> {
-        let model = Model::<'a>::from_bytes(&model_data)?;
+impl TensorInvoker {
+    pub fn new(model_data: &[u8]) -> Result<Self, ZKNeuralError> {
+        let model = Model::from_bytes(&model_data)?;
 
         let interpreter = Interpreter::new(&model, None)?;
 
@@ -27,10 +27,8 @@ impl<'a> TensorInvoker<'a> {
         let input_shape = input.shape().clone();
         let input_data_type = input.data_type();
 
-        drop(interpreter);
-
         Ok(TensorInvoker {
-            model,
+            model_data: model_data.to_vec(),
             input_shape,
             input_data_type,
         })
@@ -70,7 +68,9 @@ impl<'a> TensorInvoker<'a> {
     }
 
     pub fn fire(&self, data: &[u8]) -> Result<Vec<u8>, ZKNeuralError> {
-        let interpreter = Interpreter::new(&self.model, None)?;
+        let model = Model::from_bytes(&self.model_data)?;
+
+        let interpreter = Interpreter::new(&model, None)?;
 
         interpreter.allocate_tensors()?;
 
@@ -238,7 +238,10 @@ mod tests {
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
 
-        let result = invoker.prepare_image_by_spec(&image_data);
-        assert!(result.is_ok());
+        let prepared_image = invoker.prepare_image_by_spec(&image_data).unwrap();
+
+        let result = invoker.fire(&prepared_image).unwrap();
+
+        println!("Result: {:?}", String::from_utf8(result).unwrap());
     }
 }
