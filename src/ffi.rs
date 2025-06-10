@@ -176,6 +176,32 @@ pub extern "C" fn rs_zkneural_tensor_invoker_free(invoker: *mut TensorInvoker) {
 }
 
 #[unsafe(no_mangle)]
+pub extern "C" fn rs_zkneural_tensor_invoker_image_fire(
+    invoker: *mut TensorInvoker,
+    image_buffer: *const u8,
+    image_len: usize,
+) -> *mut ZkNeuralCoreResult {
+    if invoker.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let image_data = unsafe { std::slice::from_raw_parts(image_buffer, image_len) };
+
+    let invoker = unsafe { &mut *invoker };
+
+    let prepared_image_data = match invoker.prepare_image_by_spec(image_data) {
+        Ok(data) => data,
+        Err(e) => {
+            return ZkNeuralCoreResult::from_rust_result(Err(e));
+        }
+    };
+
+    let result = invoker.fire(&prepared_image_data);
+
+    ZkNeuralCoreResult::from_rust_result(result)
+}
+
+#[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_alloc(len: usize) -> *mut u8 {
     unsafe {
         let layout = Layout::from_size_align_unchecked(len, mem::align_of::<u8>());
