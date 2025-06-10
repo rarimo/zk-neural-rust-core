@@ -1,5 +1,5 @@
 use image::{EncodableLayout, imageops::FilterType};
-use num_traits::{Float, PrimInt, ToBytes};
+use num_traits::{Float, FromBytes, PrimInt, ToBytes};
 use tflitec::{
     interpreter::Interpreter,
     model::Model,
@@ -16,19 +16,13 @@ pub struct TensorInvoker<'a> {
 
 impl<'a> TensorInvoker<'a> {
     pub fn new(model_data: &'a [u8]) -> Result<Self, ZKNeuralError> {
-        let model =
-            Model::<'a>::from_bytes(&model_data).map_err(ZKNeuralError::TensorFlowLiteError)?;
+        let model = Model::<'a>::from_bytes(&model_data)?;
 
-        let interpreter =
-            Interpreter::new(&model, None).map_err(ZKNeuralError::TensorFlowLiteError)?;
+        let interpreter = Interpreter::new(&model, None)?;
 
-        interpreter
-            .allocate_tensors()
-            .map_err(ZKNeuralError::TensorFlowLiteError)?;
+        interpreter.allocate_tensors()?;
 
-        let input = interpreter
-            .input(0)
-            .map_err(ZKNeuralError::TensorFlowLiteError)?;
+        let input = interpreter.input(0)?;
 
         let input_shape = input.shape().clone();
         let input_data_type = input.data_type();
@@ -52,9 +46,11 @@ impl<'a> TensorInvoker<'a> {
         let height = input_dimentions[2];
         let channels = input_dimentions[3];
 
-        let loaded_image = image::load_from_memory(image_data)
-            .map_err(ZKNeuralError::ImageProcessingError)?
-            .resize_exact(width as u32, height as u32, FilterType::CatmullRom);
+        let loaded_image = image::load_from_memory(image_data)?.resize_exact(
+            width as u32,
+            height as u32,
+            FilterType::CatmullRom,
+        );
 
         let prepared_image: Vec<u8> = match channels {
             1 => loaded_image.grayscale().as_bytes().to_vec(),
@@ -70,6 +66,56 @@ impl<'a> TensorInvoker<'a> {
             DataType::Float32 => Ok(prepare_data_by_float_type::<f32>(prepared_image)),
             DataType::Float64 => Ok(prepare_data_by_float_type::<f64>(prepared_image)),
             _ => Err(ZKNeuralError::InvalidModelDataType),
+        }
+    }
+
+    pub fn fire(&self, data: &[u8]) -> Result<Vec<u8>, ZKNeuralError> {
+        let interpreter = Interpreter::new(&self.model, None)?;
+
+        interpreter.allocate_tensors()?;
+
+        interpreter.copy(data, 0)?;
+
+        interpreter.invoke()?;
+
+        let output_tensor = interpreter.output(0)?;
+
+        let output_data = output_tensor.data::<u8>().to_vec();
+
+        match self.input_data_type {
+            DataType::Uint8 => {
+                let collected = collect_processed_data_to::<u8>(output_data);
+
+                return Ok(serde_json::to_vec(&collected)?);
+            }
+            DataType::Int16 => {
+                let collected = collect_processed_data_to::<i16>(output_data);
+
+                return Ok(serde_json::to_vec(&collected)?);
+            }
+            DataType::Int32 => {
+                let collected = collect_processed_data_to::<i32>(output_data);
+
+                return Ok(serde_json::to_vec(&collected)?);
+            }
+            DataType::Int64 => {
+                let collected = collect_processed_data_to::<i64>(output_data);
+
+                return Ok(serde_json::to_vec(&collected)?);
+            }
+            DataType::Float32 => {
+                let collected = collect_processed_data_to_float::<f32>(output_data);
+
+                return Ok(serde_json::to_vec(&collected)?);
+            }
+            DataType::Float64 => {
+                let collected = collect_processed_data_to_float::<f64>(output_data);
+
+                return Ok(serde_json::to_vec(&collected)?);
+            }
+            _ => {
+                return Err(ZKNeuralError::InvalidModelDataType);
+            }
         }
     }
 }
@@ -102,6 +148,38 @@ fn prepare_data_by_type<T: PrimInt + ToBytes>(data: Vec<u8>) -> Vec<u8> {
         .into_iter()
         .map(|i| i.to_le_bytes().as_ref().to_vec())
         .flatten()
+        .collect()
+}
+
+fn collect_processed_data_to_float<T>(data: Vec<u8>) -> Vec<T>
+where
+    T: Float + num_traits::FromBytes,
+    for<'a> &'a [u8]: TryInto<&'a T::Bytes>,
+{
+    let floats: Vec<T> = data
+        .chunks_exact(std::mem::size_of::<T>())
+        .map(TryInto::<&T::Bytes>::try_into)
+        .map(|x| x.unwrap_or_else(|_| panic!("could not convert slice to array reference!")))
+        .map(T::from_le_bytes)
+        .collect();
+
+    let sum_of_square = floats.iter().fold(T::zero(), |acc, &x| acc + x * x);
+
+    floats
+        .into_iter()
+        .map(|x| x / sum_of_square.sqrt())
+        .collect()
+}
+
+fn collect_processed_data_to<T>(data: Vec<u8>) -> Vec<T>
+where
+    T: num_traits::FromBytes,
+    for<'a> &'a [u8]: TryInto<&'a T::Bytes>,
+{
+    data.chunks_exact(std::mem::size_of::<T>())
+        .map(TryInto::<&T::Bytes>::try_into)
+        .map(|x| x.unwrap_or_else(|_| panic!("could not convert slice to array reference!")))
+        .map(T::from_le_bytes)
         .collect()
 }
 

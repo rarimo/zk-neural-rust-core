@@ -113,15 +113,13 @@ impl ZKNeuralCore {
             proof_buffer.truncate(proof_size);
             public_buffer.truncate(public_size);
 
-            let proof = serde_json::from_slice::<GrothZkProofPoints>(&proof_buffer)
-                .map_err(ZKNeuralError::JsonError)?;
+            let proof = serde_json::from_slice::<GrothZkProofPoints>(&proof_buffer)?;
 
-            let pub_signals = serde_json::from_slice::<GrothZkProofPubSignals>(&public_buffer)
-                .map_err(ZKNeuralError::JsonError)?;
+            let pub_signals = serde_json::from_slice::<GrothZkProofPubSignals>(&public_buffer)?;
 
             let groth_proof = GrothZkProof { proof, pub_signals };
 
-            let proof = serde_json::to_vec(&groth_proof).map_err(ZKNeuralError::JsonError)?;
+            let proof = serde_json::to_vec(&groth_proof)?;
 
             Ok(proof)
         } else {
