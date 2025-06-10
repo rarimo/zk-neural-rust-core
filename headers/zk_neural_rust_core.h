@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct TensorInvoker TensorInvoker;
+
 typedef struct ZKNeuralCore ZKNeuralCore;
 
 typedef struct ZKNeuralError ZKNeuralError;
@@ -58,6 +60,15 @@ struct ZkNeuralCoreResult *rs_zkneural_generate_proof(struct ZKNeuralCore *core,
                                                       uintptr_t zkey_len,
                                                       const uint8_t *wtns_buffer,
                                                       uintptr_t wtns_len);
+
+struct TensorInvoker *rs_zkneural_tensor_invoker_new(const uint8_t *model_buffer,
+                                                     uintptr_t model_len);
+
+void rs_zkneural_tensor_invoker_free(struct TensorInvoker *invoker);
+
+struct ZkNeuralCoreResult *rs_zkneural_tensor_invoker_image_fire(struct TensorInvoker *invoker,
+                                                                 const uint8_t *image_buffer,
+                                                                 uintptr_t image_len);
 
 uint8_t *rs_zkneural_alloc(uintptr_t len);
 

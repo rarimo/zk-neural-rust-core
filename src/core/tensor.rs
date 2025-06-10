@@ -153,7 +153,7 @@ fn prepare_data_by_type<T: PrimInt + ToBytes>(data: Vec<u8>) -> Vec<u8> {
 
 fn collect_processed_data_to_float<T>(data: Vec<u8>) -> Vec<T>
 where
-    T: Float + num_traits::FromBytes,
+    T: Float + FromBytes,
     for<'a> &'a [u8]: TryInto<&'a T::Bytes>,
 {
     let floats: Vec<T> = data
