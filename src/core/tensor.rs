@@ -1,7 +1,116 @@
+use image::{EncodableLayout, imageops::FilterType};
+use num_traits::{Float, PrimInt, ToBytes};
+use tflitec::{
+    interpreter::Interpreter,
+    model::Model,
+    tensor::{DataType, Shape},
+};
+
+use crate::ZKNeuralError;
+
+pub struct TensorInvoker<'a> {
+    pub model: Model<'a>,
+    pub input_shape: Shape,
+    pub input_data_type: DataType,
+}
+
+impl<'a> TensorInvoker<'a> {
+    pub fn new(model_data: &'a [u8]) -> Result<Self, ZKNeuralError> {
+        let model =
+            Model::<'a>::from_bytes(&model_data).map_err(ZKNeuralError::TensorFlowLiteError)?;
+
+        let interpreter =
+            Interpreter::new(&model, None).map_err(ZKNeuralError::TensorFlowLiteError)?;
+
+        interpreter
+            .allocate_tensors()
+            .map_err(ZKNeuralError::TensorFlowLiteError)?;
+
+        let input = interpreter
+            .input(0)
+            .map_err(ZKNeuralError::TensorFlowLiteError)?;
+
+        let input_shape = input.shape().clone();
+        let input_data_type = input.data_type();
+
+        drop(interpreter);
+
+        Ok(TensorInvoker {
+            model,
+            input_shape,
+            input_data_type,
+        })
+    }
+
+    pub fn prepare_image_by_spec(&self, image_data: &[u8]) -> Result<Vec<u8>, ZKNeuralError> {
+        let input_dimentions = self.input_shape.dimensions();
+        if input_dimentions.len() != 4 {
+            return Err(ZKNeuralError::ModelNotFourDimensional);
+        }
+
+        let width = input_dimentions[1];
+        let height = input_dimentions[2];
+        let channels = input_dimentions[3];
+
+        let loaded_image = image::load_from_memory(image_data)
+            .map_err(ZKNeuralError::ImageProcessingError)?
+            .resize_exact(width as u32, height as u32, FilterType::CatmullRom);
+
+        let prepared_image: Vec<u8> = match channels {
+            1 => loaded_image.grayscale().as_bytes().to_vec(),
+            3 => loaded_image.to_rgb8().as_bytes().to_vec(),
+            _ => return Err(ZKNeuralError::InvalidModelChannel),
+        };
+
+        match self.input_data_type {
+            DataType::Uint8 => Ok(prepare_data_by_type::<u8>(prepared_image)),
+            DataType::Int16 => Ok(prepare_data_by_type::<i16>(prepared_image)),
+            DataType::Int32 => Ok(prepare_data_by_type::<i32>(prepared_image)),
+            DataType::Int64 => Ok(prepare_data_by_type::<i64>(prepared_image)),
+            DataType::Float32 => Ok(prepare_data_by_float_type::<f32>(prepared_image)),
+            DataType::Float64 => Ok(prepare_data_by_float_type::<f64>(prepared_image)),
+            _ => Err(ZKNeuralError::InvalidModelDataType),
+        }
+    }
+}
+
+fn prepare_data_by_float_type<T: Float + ToBytes>(data: Vec<u8>) -> Vec<u8> {
+    let mut float_data: Vec<T> = vec![];
+    for &byte in data.iter() {
+        let float_value = T::from(byte).expect("Failed to convert byte to float type");
+
+        let multiplier = T::from(255.0).expect("Failed to convert 255.0 to float type");
+
+        float_data.push(float_value / multiplier);
+    }
+
+    float_data
+        .into_iter()
+        .map(|f| f.to_le_bytes().as_ref().to_vec())
+        .flatten()
+        .collect()
+}
+
+fn prepare_data_by_type<T: PrimInt + ToBytes>(data: Vec<u8>) -> Vec<u8> {
+    let mut int_data: Vec<T> = vec![];
+    for &byte in data.iter() {
+        let int_value = T::from(byte).expect("Failed to convert byte to integer type");
+        int_data.push(int_value);
+    }
+
+    int_data
+        .into_iter()
+        .map(|i| i.to_le_bytes().as_ref().to_vec())
+        .flatten()
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fs::File, io::Read};
     use tflitec::{interpreter::Interpreter, model::Model};
+
+    use crate::core::tensor::TensorInvoker;
 
     #[test]
     fn compute() {
@@ -35,5 +144,23 @@ mod tests {
         let output_data = output_tensor.data::<f32>();
 
         println!("Output tensor shape: {:?}", output_data);
+    }
+
+    #[test]
+    fn test_tensor_invoker() {
+        let mut file = File::open("assets/arcface.tflite").unwrap();
+        let mut model_data = Vec::new();
+        file.read_to_end(&mut model_data).unwrap();
+
+        let invoker = TensorInvoker::new(&model_data).unwrap();
+
+        let image_data = File::open("assets/face.jpeg")
+            .unwrap()
+            .bytes()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        let result = invoker.prepare_image_by_spec(&image_data);
+        assert!(result.is_ok());
     }
 }

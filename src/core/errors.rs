@@ -12,4 +12,14 @@ pub enum ZKNeuralError {
     ProofGenerationFailed(String),
     #[error("JSON error: {0}")]
     JsonError(serde_json::Error),
+    #[error("TensorFlow Lite error: {0}")]
+    TensorFlowLiteError(tflitec::Error),
+    #[error("TensorFlow Lite model does not have four dimensions")]
+    ModelNotFourDimensional,
+    #[error("Image processing error: {0}")]
+    ImageProcessingError(image::ImageError),
+    #[error("TenserFlow Lite Model have invalid channel")]
+    InvalidModelChannel,
+    #[error("TenserFlow Lite Model have invalid data type")]
+    InvalidModelDataType,
 }
