@@ -5,7 +5,7 @@ set -e
 rm -rf TensorFrameworks
 
 IOS_FRAMEWORK_PATH=$(ls -d ./target/aarch64-apple-ios/release/build/tflitec-*/out/TensorFlowLiteC.framework | head -n 1)
-IOS_SIM_FRAMEWORK_PATH="./build_helpers/ios-arm64-simulator/TensorFlowLiteC.framework"
+IOS_SIM_FRAMEWORK_PATH=$(ls -d ./target/aarch64-apple-ios-sim/release/build/tflitec-*/out/TensorFlowLiteC.framework | head -n 1)
 
 mkdir -p TensorFrameworks
 
