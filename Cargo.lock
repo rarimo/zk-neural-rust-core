@@ -1097,8 +1097,7 @@ checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 [[package]]
 name = "tflitec"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d6b03acb937bb8886ebfc9aad6fa099c4e6a328d0e41713efc83af64e16fb66"
+source = "git+https://github.com/rarimo/tflitec-rs.git?tag=v0.6.1#48d65d52e590362f7a062c03b1134b256ac6114e"
 dependencies = [
  "bindgen",
  "curl",
