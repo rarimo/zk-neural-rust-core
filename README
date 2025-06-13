@@ -45,4 +45,4 @@ See `test.c` for a demonstration of witness and proof generation via FFI.
 
 ## License
 
-MIT
+MIT License. See [LICENCE](LICENCE) for details.
