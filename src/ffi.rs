@@ -49,6 +49,10 @@ impl ZkNeuralCoreResult {
     }
 }
 
+/// Frees the memory allocated for the ZkNeuralCoreResult.
+///
+/// # Arguments
+/// * `result` - A pointer to the `ZkNeuralCoreResult` instance to free.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_dealloc_result(result: *mut ZkNeuralCoreResult) {
     if result.is_null() {
@@ -66,12 +70,21 @@ pub extern "C" fn rs_zkneural_dealloc_result(result: *mut ZkNeuralCoreResult) {
     }
 }
 
+/// Creates a new instance of the ZKNeuralCore.
+///
+/// # Returns
+///
+/// Returns a pointer to a newly allocated `ZKNeuralCore` instance.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_new() -> *mut ZKNeuralCore {
     let core = ZKNeuralCore::new();
     Box::into_raw(Box::new(core))
 }
 
+/// Frees the memory allocated for the ZKNeuralCore instance.
+///
+/// # Arguments
+/// * `core` - A pointer to the `ZKNeuralCore` instance to free.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_free(core: *mut ZKNeuralCore) {
     if core.is_null() {
@@ -82,6 +95,11 @@ pub extern "C" fn rs_zkneural_free(core: *mut ZKNeuralCore) {
     }
 }
 
+/// Sets the callback for generating witnesses in the ZKNeural core.
+///
+/// # Arguments
+/// * `core` - A pointer to the `ZKNeuralCore` instance.
+/// * `callback` - The callback function to set for generating witnesses.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_set_generate_witness_callback(
     core: *mut ZKNeuralCore,
@@ -96,6 +114,11 @@ pub extern "C" fn rs_zkneural_set_generate_witness_callback(
     }
 }
 
+/// Sets the callback for generating proofs in the ZKNeural core.
+///
+/// # Arguments
+/// * `core` - A pointer to the `ZKNeuralCore` instance.
+/// * `callback` - The callback function to set for generating proofs.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_set_generate_proof_callback(
     core: *mut ZKNeuralCore,
@@ -110,6 +133,19 @@ pub extern "C" fn rs_zkneural_set_generate_proof_callback(
     }
 }
 
+/// Generates a witness using the provided ZKNeural core, circuit, and JSON buffers.
+///
+/// # Arguments
+///
+/// * `core` - A pointer to the `ZKNeuralCore` instance.
+/// * `circuit_buffer` - A pointer to the buffer containing the circuit data.
+/// * `circuit_len` - The length of the circuit buffer in bytes.
+/// * `json_buffer` - A pointer to the buffer containing the JSON data.
+/// * `json_len` - The length of the JSON buffer in bytes.
+///
+/// # Returns
+///
+/// Returns a pointer to a `ZkNeuralCoreResult` containing the result of the witness generation.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_generate_witness(
     core: *mut ZKNeuralCore,
@@ -131,6 +167,19 @@ pub extern "C" fn rs_zkneural_generate_witness(
     ZkNeuralCoreResult::from_rust_result(result)
 }
 
+/// Generates a proof using the provided ZKNeural core, zkey, and wtns buffers.
+///
+/// # Arguments
+///
+/// * `core` - A pointer to the `ZKNeuralCore` instance.
+/// * `zkey_buffer` - A pointer to the buffer containing the zkey data.
+/// * `zkey_len` - The length of the zkey buffer in bytes.
+/// * `wtns_buffer` - A pointer to the buffer containing the wtns data.
+/// * `wtns_len` - The length of the wtns buffer in bytes.
+///
+/// # Returns
+///
+/// Returns a pointer to a `ZkNeuralCoreResult` containing the result of the proof generation.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_generate_proof(
     core: *mut ZKNeuralCore,
@@ -152,13 +201,26 @@ pub extern "C" fn rs_zkneural_generate_proof(
     ZkNeuralCoreResult::from_rust_result(result)
 }
 
+/// Creates a new `TensorInvoker` instance from the provided model buffer slice.
+///
+/// # Panics
+///
+/// If the model buffer cannot be deserialized into a valid TFLite model, this function will panic.
+///
+/// # Arguments
+///
+/// * `model_buffer` - A reference to a buffer containing the serialized TFLite model data.
+/// * `model_len` - The length of the model buffer in bytes.
+///
+/// # Returns
+///
+/// Returns a `TensorInvoker` instance if successful.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_tensor_invoker_new(
     model_buffer: *const u8,
     model_len: usize,
 ) -> *mut TensorInvoker {
     let model_slice = unsafe { std::slice::from_raw_parts(model_buffer, model_len).to_vec() };
-
     let invoker =
         TensorInvoker::new(&model_slice).expect("Failed to create TensorInvoker from model buffer");
 
@@ -175,6 +237,18 @@ pub extern "C" fn rs_zkneural_tensor_invoker_free(invoker: *mut TensorInvoker) {
     }
 }
 
+/// Invokes the TensorInvoker with the provided image buffer.
+///
+/// This function prepares the image data according to the specifications of the TensorInvoker
+///
+/// # Arguments
+/// * `invoker` - A pointer to the `TensorInvoker` instance.
+/// * `image_buffer` - A pointer to the image data buffer.
+/// * `image_len` - The length of the image buffer in bytes.
+///
+/// # Returns
+///
+/// Returns a pointer to a `ZkNeuralCoreResult` containing the result of the invocation.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_tensor_invoker_image_fire(
     invoker: *mut TensorInvoker,
@@ -201,6 +275,14 @@ pub extern "C" fn rs_zkneural_tensor_invoker_image_fire(
     ZkNeuralCoreResult::from_rust_result(result)
 }
 
+/// Allocates a buffer of the specified length.
+///
+/// # Arguments
+/// * `len` - The length of the buffer to allocate in bytes.
+///
+/// # Returns
+///
+/// Returns a pointer to the allocated buffer. If allocation fails, it returns a null pointer.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_alloc(len: usize) -> *mut u8 {
     unsafe {
@@ -209,6 +291,11 @@ pub extern "C" fn rs_zkneural_alloc(len: usize) -> *mut u8 {
     }
 }
 
+/// Deallocates a buffer previously allocated with `rs_zkneural_alloc`.
+///
+/// # Arguments
+/// * `ptr` - A pointer to the buffer to deallocate.
+/// * `len` - The length of the buffer in bytes.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_dealloc(ptr: *mut u8, len: usize) {
     unsafe {
