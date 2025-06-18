@@ -270,7 +270,7 @@ pub extern "C" fn rs_zkneural_tensor_invoker_image_fire(
         }
     };
 
-    let result = invoker.fire(&prepared_image_data);
+    let result = invoker.fire(&prepared_image_data, true);
 
     ZkNeuralCoreResult::from_rust_result(result)
 }

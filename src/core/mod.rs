@@ -1,6 +1,9 @@
 pub mod callbacks;
 pub mod constants;
 pub mod errors;
+pub mod face_anchors;
+pub mod face_detection;
+pub mod math;
 pub mod tensor;
 pub mod zk_proof;
 
