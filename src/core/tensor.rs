@@ -6,12 +6,18 @@ use tflitec::{
     tensor::{DataType, Shape},
 };
 
-use crate::ZKNeuralError;
+use crate::{ZKNeuralError, core::face_detection::FaceDetector};
 
 pub struct TensorInvoker {
     pub model_data: Vec<u8>,
     pub input_shape: Shape,
     pub input_data_type: DataType,
+}
+
+#[repr(C)]
+pub enum ImagePreprocessing {
+    None,
+    FaceRecognition,
 }
 
 impl TensorInvoker {
@@ -35,7 +41,18 @@ impl TensorInvoker {
         })
     }
 
-    pub fn prepare_image_by_spec(&self, image_data: &[u8]) -> Result<Vec<u8>, ZKNeuralError> {
+    pub fn prepare_image_by_spec(
+        &self,
+        image_data: &[u8],
+        image_preprocessing: ImagePreprocessing,
+    ) -> Result<Vec<u8>, ZKNeuralError> {
+        let preprocessed_image_data = match image_preprocessing {
+            ImagePreprocessing::FaceRecognition => {
+                FaceDetector::detect_face(image_data)?.as_bytes().to_vec()
+            }
+            ImagePreprocessing::None => image_data.to_vec(),
+        };
+
         let input_dimentions = self.input_shape.dimensions();
         if input_dimentions.len() != 4 {
             return Err(ZKNeuralError::ModelNotFourDimensional);
@@ -45,7 +62,7 @@ impl TensorInvoker {
         let height = input_dimentions[2];
         let channels = input_dimentions[3];
 
-        let loaded_image = image::load_from_memory(image_data)?.resize_exact(
+        let loaded_image = image::load_from_memory(&preprocessed_image_data)?.resize_exact(
             width as u32,
             height as u32,
             FilterType::CatmullRom,
@@ -193,7 +210,7 @@ mod tests {
     use std::{fs::File, io::Read};
     use tflitec::{interpreter::Interpreter, model::Model};
 
-    use crate::core::tensor::TensorInvoker;
+    use crate::core::tensor::{ImagePreprocessing, TensorInvoker};
 
     #[test]
     fn compute() {
@@ -243,7 +260,9 @@ mod tests {
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
 
-        let prepared_image = invoker.prepare_image_by_spec(&image_data).unwrap();
+        let prepared_image = invoker
+            .prepare_image_by_spec(&image_data, ImagePreprocessing::None)
+            .unwrap();
 
         let result = invoker.fire(&prepared_image, true).unwrap();
 

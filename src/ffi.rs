@@ -1,3 +1,5 @@
+use crate::core::tensor::ImagePreprocessing;
+
 use super::core::ZKNeuralCore;
 use super::core::tensor::TensorInvoker;
 
@@ -254,6 +256,7 @@ pub extern "C" fn rs_zkneural_tensor_invoker_image_fire(
     invoker: *mut TensorInvoker,
     image_buffer: *const u8,
     image_len: usize,
+    image_preprocessing: ImagePreprocessing,
 ) -> *mut ZkNeuralCoreResult {
     if invoker.is_null() {
         return std::ptr::null_mut();
@@ -263,7 +266,7 @@ pub extern "C" fn rs_zkneural_tensor_invoker_image_fire(
 
     let invoker = unsafe { &mut *invoker };
 
-    let prepared_image_data = match invoker.prepare_image_by_spec(image_data) {
+    let prepared_image_data = match invoker.prepare_image_by_spec(image_data, image_preprocessing) {
         Ok(data) => data,
         Err(e) => {
             return ZkNeuralCoreResult::from_rust_result(Err(e));
