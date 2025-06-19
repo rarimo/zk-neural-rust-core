@@ -24,4 +24,7 @@ pub enum ZKNeuralError {
     InvalidModelChannel,
     #[error("TenserFlow Lite Model have invalid data type")]
     InvalidModelDataType,
+
+    #[error("Face not found")]
+    FaceNotFound,
 }

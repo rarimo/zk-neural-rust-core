@@ -8,8 +8,6 @@ use tflitec::{
 
 use crate::ZKNeuralError;
 
-// const MAX_FACE_SCORE: f32 = 0.9;
-
 pub struct TensorInvoker {
     pub model_data: Vec<u8>,
     pub input_shape: Shape,
@@ -52,8 +50,6 @@ impl TensorInvoker {
             height as u32,
             FilterType::CatmullRom,
         );
-
-        loaded_image.save("assets/processed_image.jpg")?;
 
         let prepared_image: Vec<u8> = match channels {
             1 => loaded_image.grayscale().as_bytes().to_vec(),
@@ -125,7 +121,7 @@ impl TensorInvoker {
     }
 }
 
-fn prepare_data_by_float_type<T: Float + ToBytes>(data: Vec<u8>) -> Vec<u8> {
+pub fn prepare_data_by_float_type<T: Float + ToBytes>(data: Vec<u8>) -> Vec<u8> {
     let mut float_data: Vec<T> = vec![];
     for &byte in data.iter() {
         let float_value = T::from(byte).expect("Failed to convert byte to float type");
@@ -142,7 +138,7 @@ fn prepare_data_by_float_type<T: Float + ToBytes>(data: Vec<u8>) -> Vec<u8> {
         .collect()
 }
 
-fn prepare_data_by_type<T: PrimInt + ToBytes>(data: Vec<u8>) -> Vec<u8> {
+pub fn prepare_data_by_type<T: PrimInt + ToBytes>(data: Vec<u8>) -> Vec<u8> {
     let mut int_data: Vec<T> = vec![];
     for &byte in data.iter() {
         let int_value = T::from(byte).expect("Failed to convert byte to integer type");
@@ -156,7 +152,7 @@ fn prepare_data_by_type<T: PrimInt + ToBytes>(data: Vec<u8>) -> Vec<u8> {
         .collect()
 }
 
-fn collect_processed_data_to_float<T>(data: Vec<u8>, should_process: bool) -> Vec<T>
+pub fn collect_processed_data_to_float<T>(data: Vec<u8>, should_process: bool) -> Vec<T>
 where
     T: Float + FromBytes + std::fmt::Debug,
     for<'a> &'a [u8]: TryInto<&'a T::Bytes>,
@@ -180,7 +176,7 @@ where
         .collect()
 }
 
-fn collect_processed_data_to<T>(data: Vec<u8>) -> Vec<T>
+pub fn collect_processed_data_to<T>(data: Vec<u8>) -> Vec<T>
 where
     T: num_traits::FromBytes,
     for<'a> &'a [u8]: TryInto<&'a T::Bytes>,
@@ -194,10 +190,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use image::{
-        GenericImageView,
-        imageops::{FilterType, crop_imm},
-    };
+    use image::imageops::FilterType;
     use std::{fs::File, io::Read};
     use tflitec::{interpreter::Interpreter, model::Model};
 
