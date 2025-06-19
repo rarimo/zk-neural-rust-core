@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef enum ImagePreprocessing {
+  None,
+  FaceRecognition,
+} ImagePreprocessing;
+
 typedef struct TensorInvoker TensorInvoker;
 
 typedef struct ZKNeuralCore ZKNeuralCore;
@@ -161,7 +166,8 @@ void rs_zkneural_tensor_invoker_free(struct TensorInvoker *invoker);
  */
 struct ZkNeuralCoreResult *rs_zkneural_tensor_invoker_image_fire(struct TensorInvoker *invoker,
                                                                  const uint8_t *image_buffer,
-                                                                 uintptr_t image_len);
+                                                                 uintptr_t image_len,
+                                                                 enum ImagePreprocessing image_preprocessing);
 
 /**
  * Allocates a buffer of the specified length.
