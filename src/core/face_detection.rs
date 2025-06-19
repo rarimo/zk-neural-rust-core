@@ -130,8 +130,6 @@ mod tests {
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
 
-        let face_image = FaceDetector::detect_face(&image_data).expect("Face detection failed");
-
-        face_image.save("assets/cropped_face.jpg").unwrap();
+        let _ = FaceDetector::detect_face(&image_data).expect("Face detection failed");
     }
 }
