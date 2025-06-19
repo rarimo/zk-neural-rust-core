@@ -190,11 +190,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use image::imageops::FilterType;
     use std::{fs::File, io::Read};
     use tflitec::{interpreter::Interpreter, model::Model};
 
-    use crate::core::{math::sigmoid, tensor::TensorInvoker};
+    use crate::core::tensor::TensorInvoker;
 
     #[test]
     fn compute() {
@@ -249,73 +248,5 @@ mod tests {
         let result = invoker.fire(&prepared_image, true).unwrap();
 
         println!("Result: {:?}", String::from_utf8(result).unwrap());
-    }
-
-    #[test]
-    fn test_tensor_find_face() {
-        let mut file = File::open("assets/blaze_face_short_range.tflite").unwrap();
-        let mut model_data = Vec::new();
-        file.read_to_end(&mut model_data).unwrap();
-
-        let image_data = File::open("assets/face3.jpg")
-            .unwrap()
-            .bytes()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-
-        let invoker = TensorInvoker::new(&model_data).unwrap();
-
-        let prepared_image_data = invoker.prepare_image_by_spec(&image_data).unwrap();
-        let result_raw = invoker.fire(&prepared_image_data, false).unwrap();
-
-        let result: Vec<f32> = serde_json::from_slice(&result_raw).unwrap();
-
-        println!("Result: {:?}", &result[0..4]);
-
-        let x_center = result[0];
-        let y_center = result[1];
-        let width = result[2];
-        let height = result[3];
-
-        let primary_image = image::load_from_memory(&image_data).unwrap().resize_exact(
-            128,
-            128,
-            FilterType::CatmullRom,
-        );
-
-        let cropped = crop_and_resize_face(&primary_image, x_center, y_center, width, height);
-
-        // Save the result
-        cropped.save("assets/face_cropped_resized.jpg").unwrap();
-    }
-
-    fn crop_and_resize_face(
-        image: &image::DynamicImage,
-        x_center_raw: f32,
-        y_center_raw: f32,
-        width: f32,
-        height: f32,
-    ) -> image::DynamicImage {
-        let image_width = image.width() as f32;
-        let image_height = image.height() as f32;
-
-        let x_center = sigmoid(x_center_raw) * image_width;
-        let y_center = sigmoid(y_center_raw) * image_height;
-
-        println!(
-            "x_center: {}, y_center: {}, width: {}, height: {}",
-            x_center, y_center, width, height
-        );
-
-        let x = (x_center - width / 2.0).max(0.0) as u32;
-        let y = y_center as u32;
-
-        println!("Crop coordinates: x: {}, y: {}", x, y);
-
-        let width = width as u32;
-        let height = height as u32;
-
-        // Crop the image
-        image.crop_imm(x, y, width, height)
     }
 }

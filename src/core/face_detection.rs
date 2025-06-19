@@ -1,4 +1,4 @@
-use image::imageops::FilterType;
+use image::{DynamicImage, imageops::FilterType};
 use tflitec::{interpreter::Interpreter, model::Model};
 
 use crate::{
@@ -41,14 +41,14 @@ impl FaceDetector {
         return decoded_boxes;
     }
 
-    pub fn detect_face(image_data: &[u8]) -> Result<Vec<f32>, ZKNeuralError> {
-        let loaded_image = image::load_from_memory(image_data)?.resize_exact(
+    pub fn detect_face(image_data: &[u8]) -> Result<DynamicImage, ZKNeuralError> {
+        let loaded_rescaled_image = image::load_from_memory(image_data)?.resize_exact(
             IMAGE_SCALE,
             IMAGE_SCALE,
             FilterType::CatmullRom,
         );
 
-        let rgb_image_data: Vec<u8> = loaded_image.to_rgb8().to_vec();
+        let rgb_image_data: Vec<u8> = loaded_rescaled_image.to_rgb8().to_vec();
 
         let prepared_image_data = prepare_data_by_float_type::<f32>(rgb_image_data);
 
@@ -95,20 +95,27 @@ impl FaceDetector {
 
         let best_box = &decoded_boxes[best_score_index];
 
-        let x_min = IMAGE_SCALE as f32 * best_box[0];
-        let y_min = IMAGE_SCALE as f32 * best_box[1];
-        let x_max = IMAGE_SCALE as f32 * best_box[2];
-        let y_max = IMAGE_SCALE as f32 * best_box[3];
+        let loaded_image = image::load_from_memory(&image_data).unwrap();
 
-        Ok(vec![x_min, y_min, x_max, y_max])
+        let x_min = loaded_image.width() as f32 * best_box[0];
+        let y_min = loaded_image.height() as f32 * best_box[1];
+        let x_max = loaded_image.width() as f32 * best_box[2];
+        let y_max = loaded_image.height() as f32 * best_box[3];
+
+        let cropped_image = loaded_image.crop_imm(
+            x_min as u32,
+            y_min as u32,
+            (x_max - x_min) as u32,
+            (y_max - y_min) as u32,
+        );
+
+        Ok(cropped_image)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use std::{fs::File, io::Read};
-
-    use image::imageops::FilterType;
 
     use crate::core::face_detection::FaceDetector;
 
@@ -120,21 +127,8 @@ mod tests {
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
 
-        let face_box = FaceDetector::detect_face(&image_data).expect("Face detection failed");
+        let face_image = FaceDetector::detect_face(&image_data).expect("Face detection failed");
 
-        let loaded_image = image::load_from_memory(&image_data).unwrap().resize_exact(
-            128,
-            128,
-            FilterType::CatmullRom,
-        );
-
-        let cropped_image = loaded_image.crop_imm(
-            face_box[0] as u32,
-            face_box[1] as u32,
-            (face_box[2] - face_box[0]) as u32,
-            (face_box[3] - face_box[1]) as u32,
-        );
-
-        cropped_image.save("assets/cropped_face.jpg").unwrap();
+        face_image.save("assets/cropped_face.jpg").unwrap();
     }
 }
