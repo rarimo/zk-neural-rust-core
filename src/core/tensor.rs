@@ -7,11 +7,25 @@ use tflitec::{
 };
 
 use crate::{ZKNeuralError, core::face_detection::FaceDetector};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub struct TensorInvoker {
     pub model_data: Vec<u8>,
     pub input_shape: Shape,
     pub input_data_type: DataType,
+    pub should_process: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BionettaGenericInputs {
+    pub ultra_groth: String,
+    pub address: String,
+    pub threshold: String,
+    pub nonce: String,
+    pub features: Vec<String>,
+    pub image: Vec<String>,
+    pub rand: String,
 }
 
 #[repr(C)]
@@ -21,7 +35,7 @@ pub enum ImagePreprocessing {
 }
 
 impl TensorInvoker {
-    pub fn new(model_data: &[u8]) -> Result<Self, ZKNeuralError> {
+    pub fn new(model_data: &[u8], should_process: bool) -> Result<Self, ZKNeuralError> {
         let model = Model::from_bytes(&model_data)?;
 
         let interpreter = Interpreter::new(&model, None)?;
@@ -38,6 +52,7 @@ impl TensorInvoker {
             model_data: model_data.to_vec(),
             input_shape,
             input_data_type,
+            should_process,
         })
     }
 
@@ -85,7 +100,7 @@ impl TensorInvoker {
         }
     }
 
-    pub fn fire(&self, data: &[u8], should_process: bool) -> Result<Vec<u8>, ZKNeuralError> {
+    pub fn fire(&self, data: &[u8]) -> Result<Vec<u8>, ZKNeuralError> {
         let model = Model::from_bytes(&self.model_data)?;
 
         let interpreter = Interpreter::new(&model, None)?;
@@ -122,12 +137,14 @@ impl TensorInvoker {
                 return Ok(serde_json::to_vec(&collected)?);
             }
             DataType::Float32 => {
-                let collected = collect_processed_data_to_float::<f32>(output_data, should_process);
+                let collected =
+                    collect_processed_data_to_float::<f32>(output_data, self.should_process);
 
                 return Ok(serde_json::to_vec(&collected)?);
             }
             DataType::Float64 => {
-                let collected = collect_processed_data_to_float::<f64>(output_data, should_process);
+                let collected =
+                    collect_processed_data_to_float::<f64>(output_data, self.should_process);
 
                 return Ok(serde_json::to_vec(&collected)?);
             }
@@ -135,6 +152,28 @@ impl TensorInvoker {
                 return Err(ZKNeuralError::InvalidModelDataType);
             }
         }
+    }
+
+    pub fn drain_generic_inputs(
+        &self,
+        data: &[u8],
+        address: String,
+        threshold: String,
+        nonce: String,
+    ) -> Result<BionettaGenericInputs, ZKNeuralError> {
+        let serialized_features = self.fire(data)?;
+
+        let features = parse_json_numbers_to_strings_unchecked(&serialized_features);
+
+        Ok(BionettaGenericInputs {
+            ultra_groth: "1".to_string(),
+            address,
+            threshold,
+            nonce,
+            features: features,
+            image: vec![],
+            rand: "0".to_string(),
+        })
     }
 }
 
@@ -205,6 +244,24 @@ where
         .collect()
 }
 
+pub fn parse_json_numbers_to_strings_unchecked(json_bytes: &[u8]) -> Vec<String> {
+    let value: Value = serde_json::from_slice(json_bytes).expect("Failed to parse JSON");
+
+    let Value::Array(arr) = value else {
+        panic!("Expected a JSON array");
+    };
+
+    arr.iter()
+        .map(|v| {
+            let Value::Number(number) = v else {
+                panic!("Expected a JSON number");
+            };
+
+            number.to_string()
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fs::File, io::Read};
@@ -252,7 +309,7 @@ mod tests {
         let mut model_data = Vec::new();
         file.read_to_end(&mut model_data).unwrap();
 
-        let invoker = TensorInvoker::new(&model_data).unwrap();
+        let invoker = TensorInvoker::new(&model_data, true).unwrap();
 
         let image_data = File::open("assets/face.jpeg")
             .unwrap()
@@ -264,7 +321,7 @@ mod tests {
             .prepare_image_by_spec(&image_data, ImagePreprocessing::None)
             .unwrap();
 
-        let result = invoker.fire(&prepared_image, true).unwrap();
+        let result = invoker.fire(&prepared_image).unwrap();
 
         println!("Result: {:?}", String::from_utf8(result).unwrap());
     }

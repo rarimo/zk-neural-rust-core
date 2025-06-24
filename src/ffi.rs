@@ -223,8 +223,8 @@ pub extern "C" fn rs_zkneural_tensor_invoker_new(
     model_len: usize,
 ) -> *mut TensorInvoker {
     let model_slice = unsafe { std::slice::from_raw_parts(model_buffer, model_len).to_vec() };
-    let invoker =
-        TensorInvoker::new(&model_slice).expect("Failed to create TensorInvoker from model buffer");
+    let invoker = TensorInvoker::new(&model_slice, true)
+        .expect("Failed to create TensorInvoker from model buffer");
 
     Box::into_raw(Box::new(invoker))
 }
@@ -273,7 +273,7 @@ pub extern "C" fn rs_zkneural_tensor_invoker_image_fire(
         }
     };
 
-    let result = invoker.fire(&prepared_image_data, true);
+    let result = invoker.fire(&prepared_image_data);
 
     ZkNeuralCoreResult::from_rust_result(result)
 }
