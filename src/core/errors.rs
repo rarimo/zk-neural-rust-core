@@ -17,6 +17,8 @@ pub enum ZKNeuralError {
     WitnessGenerationFailed(String),
     #[error("Proof generation failed: {0}")]
     ProofGenerationFailed(String),
+    #[error("Proving type not set")]
+    ProvingTypeNotSet,
 
     #[error("TensorFlow Lite model does not have four dimensions")]
     ModelNotFourDimensional,

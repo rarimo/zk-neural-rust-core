@@ -1,3 +1,4 @@
+use crate::core::ZKNeuralProvingType;
 use crate::core::tensor::ImagePreprocessing;
 
 use super::core::ZKNeuralCore;
@@ -132,6 +133,25 @@ pub extern "C" fn rs_zkneural_set_generate_proof_callback(
     unsafe {
         let core = &mut *core;
         core.set_generate_proof_callback(callback);
+    }
+}
+
+/// Sets the proving type for the ZKNeural core.
+///     
+/// # Arguments
+/// * `core` - A pointer to the `ZKNeuralCore` instance.
+/// * `proving_type` - The proving type to set for the ZKNeural
+#[unsafe(no_mangle)]
+pub extern "C" fn rs_zkneural_set_proving_type(
+    core: *mut ZKNeuralCore,
+    proving_type: ZKNeuralProvingType,
+) {
+    if core.is_null() {
+        return;
+    }
+    unsafe {
+        let core = &mut *core;
+        core.set_proving_type(proving_type);
     }
 }
 

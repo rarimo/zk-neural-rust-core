@@ -11,11 +11,20 @@ use callbacks::{GenerateProofCallback, GenerateWitnessCallback};
 use constants::{PROOF_SIZE, PUB_SIGNALS_SIZE, WITNESS_ERROR_MSG_MAXSIZE, WITNESS_SIZE};
 use errors::ZKNeuralError;
 
-use crate::core::zk_proof::{GrothZkProof, GrothZkProofPoints, GrothZkProofPubSignals};
+use crate::core::zk_proof::{
+    GrothZkProof, GrothZkProofPoints, UltraGrothProof, UltraGrothProofPoints, ZkProofPubSignals,
+};
+
+#[repr(C)]
+pub enum ZKNeuralProvingType {
+    Groth,
+    UltraGroth,
+}
 
 pub struct ZKNeuralCore {
     generate_witness_callback: Option<GenerateWitnessCallback>,
     generate_proof_callback: Option<GenerateProofCallback>,
+    proving_type: Option<ZKNeuralProvingType>,
 }
 
 impl ZKNeuralCore {
@@ -23,6 +32,7 @@ impl ZKNeuralCore {
         ZKNeuralCore {
             generate_witness_callback: None,
             generate_proof_callback: None,
+            proving_type: None,
         }
     }
 
@@ -32,6 +42,10 @@ impl ZKNeuralCore {
 
     pub fn set_generate_proof_callback(&mut self, callback: GenerateProofCallback) {
         self.generate_proof_callback = Some(callback);
+    }
+
+    pub fn set_proving_type(&mut self, proving_type: ZKNeuralProvingType) {
+        self.proving_type = Some(proving_type);
     }
 
     pub fn generate_witness(
@@ -77,6 +91,11 @@ impl ZKNeuralCore {
         zkey_buffer: &[u8],
         wtns_buffer: &[u8],
     ) -> Result<Vec<u8>, ZKNeuralError> {
+        let proving_type = self
+            .proving_type
+            .as_ref()
+            .ok_or(ZKNeuralError::ProvingTypeNotSet)?;
+
         if let Some(callback) = self.generate_proof_callback {
             let mut proof_buffer = vec![0u8; PROOF_SIZE];
             let mut proof_size = 0;
@@ -116,13 +135,22 @@ impl ZKNeuralCore {
             proof_buffer.truncate(proof_size);
             public_buffer.truncate(public_size);
 
-            let proof = serde_json::from_slice::<GrothZkProofPoints>(&proof_buffer)?;
+            let proof = match proving_type {
+                ZKNeuralProvingType::Groth => {
+                    let proof = serde_json::from_slice::<GrothZkProofPoints>(&proof_buffer)?;
+                    let pub_signals = serde_json::from_slice::<ZkProofPubSignals>(&public_buffer)?;
+                    let groth_proof = GrothZkProof { proof, pub_signals };
 
-            let pub_signals = serde_json::from_slice::<GrothZkProofPubSignals>(&public_buffer)?;
+                    serde_json::to_vec(&groth_proof)
+                }
+                ZKNeuralProvingType::UltraGroth => {
+                    let proof = serde_json::from_slice::<UltraGrothProofPoints>(&proof_buffer)?;
+                    let pub_signals = serde_json::from_slice::<ZkProofPubSignals>(&public_buffer)?;
+                    let groth_proof = UltraGrothProof { proof, pub_signals };
 
-            let groth_proof = GrothZkProof { proof, pub_signals };
-
-            let proof = serde_json::to_vec(&groth_proof)?;
+                    serde_json::to_vec(&groth_proof)
+                }
+            }?;
 
             Ok(proof)
         } else {
