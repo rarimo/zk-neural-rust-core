@@ -10,6 +10,11 @@ typedef enum ImagePreprocessing {
   FaceRecognition,
 } ImagePreprocessing;
 
+typedef enum ZKNeuralProvingType {
+  Groth,
+  UltraGroth,
+} ZKNeuralProvingType;
+
 typedef struct TensorInvoker TensorInvoker;
 
 typedef struct ZKNeuralCore ZKNeuralCore;
@@ -86,6 +91,15 @@ void rs_zkneural_set_generate_witness_callback(struct ZKNeuralCore *core,
  */
 void rs_zkneural_set_generate_proof_callback(struct ZKNeuralCore *core,
                                              GenerateProofCallback callback);
+
+/**
+ * Sets the proving type for the ZKNeural core.
+ *
+ * # Arguments
+ * * `core` - A pointer to the `ZKNeuralCore` instance.
+ * * `proving_type` - The proving type to set for the ZKNeural
+ */
+void rs_zkneural_set_proving_type(struct ZKNeuralCore *core, enum ZKNeuralProvingType proving_type);
 
 /**
  * Generates a witness using the provided ZKNeural core, circuit, and JSON buffers.
