@@ -298,7 +298,20 @@ pub extern "C" fn rs_zkneural_tensor_invoker_image_fire(
 
     ZkNeuralCoreResult::from_rust_result(result)
 }
-
+/// Drains generic inputs from the TensorInvoker.
+///
+/// # Arguments
+/// * `invoker` - A pointer to the `TensorInvoker` instance.
+/// * `image_buffer` - A pointer to the image data buffer.
+/// * `image_len` - The length of the image buffer in bytes.
+/// * `image_preprocessing` - The preprocessing type for the image.
+/// * `address` - A pointer to a C-style string containing the address.
+/// * `threshold` - A pointer to a C-style string containing the threshold.
+/// * `nonce` - A pointer to a C-style string containing the nonce.
+///
+/// # Returns
+///
+/// Returns a pointer to a `ZkNeuralCoreResult` containing the result of the operation.
 #[unsafe(no_mangle)]
 pub extern "C" fn rs_zkneural_tensor_invoker_drain_generic_inputs(
     invoker: *mut TensorInvoker,
