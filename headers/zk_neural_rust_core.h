@@ -183,6 +183,14 @@ struct ZkNeuralCoreResult *rs_zkneural_tensor_invoker_image_fire(struct TensorIn
                                                                  uintptr_t image_len,
                                                                  enum ImagePreprocessing image_preprocessing);
 
+struct ZkNeuralCoreResult *rs_zkneural_tensor_invoker_drain_generic_inputs(struct TensorInvoker *invoker,
+                                                                           const uint8_t *image_buffer,
+                                                                           uintptr_t image_len,
+                                                                           enum ImagePreprocessing image_preprocessing,
+                                                                           char *address,
+                                                                           char *threshold,
+                                                                           char *nonce);
+
 /**
  * Allocates a buffer of the specified length.
  *
