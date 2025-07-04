@@ -1,5 +1,5 @@
 use image::{EncodableLayout, imageops::FilterType};
-use num_traits::{Float, FromBytes, PrimInt, ToBytes};
+use num_traits::{Float, FromBytes, PrimInt, ToBytes, ToPrimitive};
 use tflitec::{
     interpreter::Interpreter,
     model::Model,
@@ -34,6 +34,8 @@ pub enum ImagePreprocessing {
     FaceRecognition,
 }
 
+const NEURAL_SIGNAL_MULTIPLIER: f64 = 32768.0;
+
 impl TensorInvoker {
     pub fn new(model_data: &[u8], should_process: bool) -> Result<Self, ZKNeuralError> {
         let model = Model::from_bytes(&model_data)?;
@@ -60,7 +62,7 @@ impl TensorInvoker {
         &self,
         image_data: &[u8],
         image_preprocessing: ImagePreprocessing,
-    ) -> Result<Vec<u8>, ZKNeuralError> {
+    ) -> Result<(Vec<u8>, Vec<String>), ZKNeuralError> {
         let preprocessed_image_data = match image_preprocessing {
             ImagePreprocessing::FaceRecognition => {
                 FaceDetector::detect_face(image_data)?.as_bytes().to_vec()
@@ -115,7 +117,7 @@ impl TensorInvoker {
 
         let output_data = output_tensor.data::<u8>().to_vec();
 
-        match self.input_data_type {
+        match output_tensor.data_type() {
             DataType::Uint8 => {
                 let collected = collect_processed_data_to::<u8>(output_data);
 
@@ -156,28 +158,33 @@ impl TensorInvoker {
 
     pub fn drain_generic_inputs(
         &self,
-        data: &[u8],
         address: String,
         threshold: String,
         nonce: String,
-    ) -> Result<BionettaGenericInputs, ZKNeuralError> {
-        let serialized_features = self.fire(data)?;
+        image_data: &[u8],
+        image_preprocessing: ImagePreprocessing,
+    ) -> Result<Vec<u8>, ZKNeuralError> {
+        let (data, signal_data) = self.prepare_image_by_spec(image_data, image_preprocessing)?;
+
+        let serialized_features = self.fire(&data)?;
 
         let features = parse_json_numbers_to_strings_unchecked(&serialized_features);
 
-        Ok(BionettaGenericInputs {
+        let inputs = BionettaGenericInputs {
             ultra_groth: "1".to_string(),
             address,
             threshold,
             nonce,
             features: features,
-            image: vec![],
+            image: signal_data,
             rand: "0".to_string(),
-        })
+        };
+
+        Ok(serde_json::to_vec(&inputs)?)
     }
 }
 
-pub fn prepare_data_by_float_type<T: Float + ToBytes>(data: Vec<u8>) -> Vec<u8> {
+pub fn prepare_data_by_float_type<T: Float + ToBytes>(data: Vec<u8>) -> (Vec<u8>, Vec<String>) {
     let mut float_data: Vec<T> = vec![];
     for &byte in data.iter() {
         let float_value = T::from(byte).expect("Failed to convert byte to float type");
@@ -187,25 +194,45 @@ pub fn prepare_data_by_float_type<T: Float + ToBytes>(data: Vec<u8>) -> Vec<u8> 
         float_data.push(float_value / multiplier);
     }
 
-    float_data
+    let result_data = float_data
+        .clone()
         .into_iter()
         .map(|f| f.to_le_bytes().as_ref().to_vec())
         .flatten()
-        .collect()
+        .collect();
+
+    let result_signal_data: Vec<String> = float_data
+        .into_iter()
+        .map(|f| {
+            (f.to_f64().unwrap() * NEURAL_SIGNAL_MULTIPLIER)
+                .to_i64()
+                .unwrap()
+                .to_string()
+        })
+        .collect();
+
+    (result_data, result_signal_data)
 }
 
-pub fn prepare_data_by_type<T: PrimInt + ToBytes>(data: Vec<u8>) -> Vec<u8> {
+pub fn prepare_data_by_type<T: PrimInt + ToBytes + ToString>(
+    data: Vec<u8>,
+) -> (Vec<u8>, Vec<String>) {
     let mut int_data: Vec<T> = vec![];
     for &byte in data.iter() {
         let int_value = T::from(byte).expect("Failed to convert byte to integer type");
         int_data.push(int_value);
     }
 
-    int_data
+    let result_data: Vec<u8> = int_data
+        .clone()
         .into_iter()
         .map(|i| i.to_le_bytes().as_ref().to_vec())
         .flatten()
-        .collect()
+        .collect();
+
+    let result_signals: Vec<String> = int_data.into_iter().map(|i| i.to_string()).collect();
+
+    (result_data, result_signals)
 }
 
 pub fn collect_processed_data_to_float<T>(data: Vec<u8>, should_process: bool) -> Vec<T>
@@ -256,6 +283,12 @@ pub fn parse_json_numbers_to_strings_unchecked(json_bytes: &[u8]) -> Vec<String>
             let Value::Number(number) = v else {
                 panic!("Expected a JSON number");
             };
+
+            if let Some(float_value) = number.as_f64() {
+                let signal = (float_value / 255.0) * NEURAL_SIGNAL_MULTIPLIER;
+
+                return signal.to_string();
+            }
 
             number.to_string()
         })
@@ -317,11 +350,38 @@ mod tests {
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
 
-        let prepared_image = invoker
+        let (prepared_image, _) = invoker
             .prepare_image_by_spec(&image_data, ImagePreprocessing::None)
             .unwrap();
 
         let result = invoker.fire(&prepared_image).unwrap();
+
+        println!("Result: {:?}", String::from_utf8(result).unwrap());
+    }
+
+    #[test]
+    fn test_inputs_drain() {
+        let mut file = File::open("assets/arcface.tflite").unwrap();
+        let mut model_data = Vec::new();
+        file.read_to_end(&mut model_data).unwrap();
+
+        let invoker = TensorInvoker::new(&model_data, true).unwrap();
+
+        let image_data = File::open("assets/face.jpeg")
+            .unwrap()
+            .bytes()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        let result = invoker
+            .drain_generic_inputs(
+                "3123123".to_string(),
+                "1".to_string(),
+                "1".to_string(),
+                &image_data,
+                ImagePreprocessing::None,
+            )
+            .unwrap();
 
         println!("Result: {:?}", String::from_utf8(result).unwrap());
     }

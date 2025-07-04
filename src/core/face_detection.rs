@@ -29,7 +29,7 @@ impl FaceDetector {
 
         let rgb_image_data: Vec<u8> = loaded_rescaled_image.to_rgb8().to_vec();
 
-        let prepared_image_data = prepare_data_by_float_type::<f32>(rgb_image_data);
+        let (prepared_image_data, _) = prepare_data_by_float_type::<f32>(rgb_image_data);
 
         let model = Model::from_bytes(BLAZE_FACE_MODEL_BYTES)?;
 
